@@ -1,0 +1,103 @@
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "=3.0.1"
+    }
+    azure = {
+      source = "terraform-providers/azure"
+    }
+  }
+}
+
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "CP-Test-RG" {
+  name     = "CP-Demo-resources"
+  location = "West US"
+  tags = {
+    environment = "Dev"
+  }
+}
+
+resource "azurerm_virtual_network" "CP-Test-VN" {
+  name                = "CP-Demo-network"
+  resource_group_name = azurerm_resource_group.CP-Test-RG.name
+  location            = azurerm_resource_group.CP-Test.location
+  address_space       = ["10.240.0.0/16"]
+  tags = {
+    environment = "Dev"
+  }
+}
+
+resource "azure_subnet" "CP-Test-SN" {
+  name                 = "CP-Demo-subnet"
+  resource_group_name  = azurerm_resource_group.CP-Test-RG.name
+  virtual_network_name = azurerm_virtual_network
+  address_prefixes     = ["10.240.1.0/24"]
+  tags = {
+    environment = "Dev"
+  }
+}
+
+resource "azure_subnet" "CP-Test-VM" {
+  name                 = "CP-Demo-subnet"
+  resource_group_name  = azurerm_resource_group.CP-Test-RG.name
+  virtual_network_name = azurerm_virtual_network
+  address_prefixes     = ["10.240.1.0/24"]
+  tags = {
+    environment = "Dev"
+  }
+}
+
+resource "azurerm_network_security_group" "CP-Test-NSG" {
+  name                = "InBoundSSH-Test"
+  location            = azurerm_resource_group-RG.CP-Test.location
+  resource_group_name = azurerm_resource_group.CP-Test-RG.name
+}
+
+resource "azurerm_network_security_rule" "CP-Test-IN" {
+  name                        = "SSH-ALLOWED-IN"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "22"
+  destination_port_range      = "*"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.CP-Test-RG.name
+  network_security_group_name = azurerm_network_security_group.CP-Test-NSG.name
+}
+
+resource "azurerm_network_security_rule" "CP-Test-OUT" {
+  name                        = "TCP-ALLOWED-OUT"
+  priority                    = 100
+  direction                   = "Outbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "*"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.CP-Test-RG.name
+  network_security_group_name = azurerm_network_security_group.CP-Test-NSG.name
+}
+
+resource "azurerm_network_interface" "CP-Test-Nic" {
+  name                = "CP-Test--Nic"
+  location            = azurerm_resource_group-RG.CP-Test.location
+  resource_group_name         = azurerm_resource_group.CP-Test-RG.name
+
+  ip_configuration {
+    name                          = "testconfiguration1"
+    subnet_id                     = azurerm_subnet.CP-Test-VM.id
+    private_ip_address_allocation = "Dynamic"
+  }
+  tags = {
+    environment = "Dev"
+  }
+}
+
